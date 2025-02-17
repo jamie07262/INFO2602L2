@@ -10,5 +10,47 @@ def initialize():
   db.init_app(app)
   db.create_all()
   bob = User('bob', 'bob@mail.com', 'bobpass')
+  db.session.add(bob)
+  db.session.commit()
   print(bob)
   print('database intialized')
+
+@app.cli.command("get-user", help= "Retrieves a User")
+@click.argument('username', default='bob')
+def get_user(username):
+  bob = User.query.filter_by(username=username).first()
+  if not bob:
+    print(f'{username} not found')
+    return
+  print(bob)
+
+@app.cli.command("change-email")
+@click.argument('username', default='bob')
+@click.argument('email', default='bob@mail.com')
+def change_email(username, email):
+  bob = User.query.filter_by(username=username).first()
+  if not bob:
+    print(f'{username} not found!')
+    return
+  bob.email = email
+  db.session.add(bob)
+  db.session.commit()
+  print(bob)
+
+@app.cli.command('create-user')
+@click.argument('username', default='rick')
+@click.argument('email', default= 'rick@mail.com')
+@click.argument('password', default='rickpass')
+
+def create_user(username, email, password):
+  newuser = User(username, email, password)
+  try:
+    db.session.add(newuser)
+    db.session.commit()
+  except IntegrityError as e:
+    db.session.rollback() #database undo any previous steps if the user already exists
+    print("Username or email is already taken!")
+  else:
+    print(newuser)
+
+
