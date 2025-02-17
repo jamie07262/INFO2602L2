@@ -20,12 +20,40 @@ class User(db.Model):
     self.email = email
     self.set_password(password)
 
+  def create_todo(self,text):
+    new_todo = Todo(text)
+    self.todos.append(new_todo)
+    return new_todo
+
   def set_password(self, password):
     """Create hashed password."""
     self.password = generate_password_hash(password, method='scrypt')
 
   def __repr__(self):
     return f'<User {self.id} {self.username} - {self.email}>'
+
+  #add method to User model 
+  def add_todo_category(self, todo_id,category_text):
+    #fetching todo by id
+    todo = Todo.query.filter_by(id=todo_id, user_id=self.id).first()
+
+    if not todo:
+      return False
+
+    #check if category already exists for current user
+    category = Category.query.filter_by(text=category_text, user_id=self.id).first()
+    if not category:
+      category = Category(user_id=self.id, text=category_text)
+      db.session.add(category)
+      db.session.commit()
+
+     #associate todo with the category if not already associated
+    if category not in todo.categories:
+      todo.categories.append(category)
+      db.session.add(todo)
+      db.session.commit()
+
+    return True
 
 class Todo(db.Model):
   id = db.Column(db.Integer, primary_key=True)
@@ -43,4 +71,30 @@ class Todo(db.Model):
     self.text=text
 
   def __repr__(self):
-    return f'<Todo: {self.id} | {self.user.username} | {self.text} | { "done" if self.done else "not done" }>'
+    category_names = ', '.join([category.text for category in self.categories])
+    return f'<Todo: {self.id} | {self.user.username} | {self.text} | { "done" if self.done else "not done" } | categories [{category_names}]>' 
+
+class TodoCategory(db.Model):
+  __tablename__ ='todo_category'
+  id = db.Column(db.Integer, primary_key=True)
+  todo_id = db.Column(db.Integer, db.ForeignKey('todo.id'), nullable=False)
+  category_id = db.Column(db.Integer, db.ForeignKey('category.id'), nullable=False)
+  last_modified = db.Column(db.DateTime, default=func.now(), onupdate=func.now())
+
+  def __repr__(self):
+    return f'<TodoCategory last modified {self.last_modified.strftime("%Y/%m/%d, %H:%M:%S")}>'
+
+
+class Category(db.Model):
+  id = db.Column(db.Integer, primary_key=True)
+  user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+  text = db.Column(db.String(255), nullable=False)
+  user = db.relationship('User', backref=db.backref('categories', lazy='joined'))
+  todos = db.relationship('Todo', secondary='todo_category', backref=db.backref('categories', lazy=True))
+
+  def __init__(self, user_id, text):
+    self.user_id = user_id
+    self.text = text
+
+  def __repr__(self):
+    return f'<Category user:{self.user.username} - {self.text}>'

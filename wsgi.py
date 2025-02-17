@@ -1,5 +1,5 @@
 import click, sys
-from models import db, User, Todo
+from models import db, User, Todo, TodoCategory, Category
 from app import app
 from sqlalchemy.exc import IntegrityError
 
@@ -10,12 +10,12 @@ def initialize():
   db.init_app(app)
   db.create_all()
   bob = User('bob', 'bob@mail.com', 'bobpass')
-  print(bob)
   #bob.todos.append(Todo('wash car'))
   new_todo = bob.create_todo('wash car')
   db.session.add(bob)
   db.session.add(new_todo)
   db.session.commit()
+  print(bob, new_todo)
   print('database intialized')
 
 @app.cli.command("get-user", help= "Retrieves a User")
@@ -111,3 +111,20 @@ def toggle_todo_command(todo_id,username):
 
   todo.toggle()
   print(f'{todo.text} is {"done" if todo.done else "not done"}!')
+
+@click.argument('username', default='bob')
+@click.argument('todo_id', default=6)
+@click.argument('category', default='chores')
+@app.cli.command('add-category', help="Adds a category to a todo")
+def add_todo_category_command(username, todo_id, category):
+  user = User.query.filter_by(username=username).first()
+  if not user:
+    print(f'{username} not found!')
+    return
+
+  res = user.add_todo_category(todo_id, category)
+  if not res:
+    print(f'{username} has no todo id {todo_id}')
+    return
+
+  print('Category added!')
