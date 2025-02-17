@@ -1,5 +1,5 @@
 import click, sys
-from models import db, User
+from models import db, User, Todo
 from app import app
 from sqlalchemy.exc import IntegrityError
 
@@ -10,9 +10,12 @@ def initialize():
   db.init_app(app)
   db.create_all()
   bob = User('bob', 'bob@mail.com', 'bobpass')
-  db.session.add(bob)
-  db.session.commit()
   print(bob)
+  bob.todos.append(Todo('wash car'))
+  #new_todo = bob.create_todo('wash car')
+  db.session.add(bob)
+  #db.session.add(new_todo)
+  db.session.commit()
   print('database intialized')
 
 @app.cli.command("get-user", help= "Retrieves a User")
@@ -69,3 +72,13 @@ def delete_user(username):
   db.session.delete(bob)
   db.session.commit()
   print(f'{username} deleted')
+
+
+@app.cli.command('get-todos')
+@click.argument('username', default='bob')
+def get_user_todos(username):
+  bob = User.query.filter_by(username=username).first()
+  if not bob:
+    print(f'{username} not found!')
+    return
+  print(bob.todos)
